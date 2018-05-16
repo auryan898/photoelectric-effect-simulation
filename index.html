@@ -2,7 +2,7 @@
 <html>
     <head>
         <meta charset="UTF-8" />
-        <title>hello phaser!</title>
+        <title>Photoelectric Effect by Ryan Au</title>
         <script src="//cdn.jsdelivr.net/phaser/2.5.0/phaser.min.js"></script>
     </head>
 
@@ -13,7 +13,7 @@
     </div>
     <div>
         <p>Potential Difference: <input type="text" id="outVolt" maxlength="4" size="4">V</p>
-        <input size="10" type="range" min="-8.00" max="8.00" step="0.01" value="0" id="sliderVolt" list="tickmarks" style="width:300px">
+        <input size="15" type="range" min="-8.00" max="8.00" step="0.01" value="0" id="sliderVolt" list="tickmarks" style="width:1000px">
         <datalist id="tickmarks">
             <option value="0">
         </datalist>
@@ -28,6 +28,10 @@
         <p>Select Material:</p>
         <select id="material">
             <option value="4.7" selected="true">Copper</option>
+            <option value="2.28">Sodium</option>
+            <option value="4.3">Zinc</option>
+            <option value="6.35">Platinum</option>
+            <option value="2.9">Calcium</option>
             <option value="4.08">Aluminum</option>
             <option value="4.81">Carbon</option>
             <option value="2.3">Potassium</option>
@@ -85,7 +89,7 @@
         function preload () {
             //loadTextures(); // battery, electron
             //electron
-            var frame0 = [
+            var frameElectron0 = [
                 
                 '..33..',
                 '.3223.',
@@ -94,8 +98,8 @@
                 '.3223.',
                 '..33..'
             ];
-            game.create.texture('electron0', frame0, 3, 3, 1);
-            var frame1 = [
+            game.create.texture('electron0', frameElectron0, 3, 3, 1);
+            var framePhoton0 = [
                 
                 '..22..',
                 '.2222.',
@@ -104,7 +108,7 @@
                 '.2222.',
                 '..22..'
             ];
-            game.create.texture('photon0', frame1, 2, 2, 0);
+            game.create.texture('photon0', framePhoton0, 2, 2, 0);
 
             var frameCircuit = [
                 '..8................8..',
@@ -142,90 +146,166 @@
             ];
             game.create.texture('battery1', frameBat1, 30, 30, 0);
         }
-        var maxKinetic = 2;
 
-        var photon0;
-        var electrons;
-        var battery0;
-        var circuit0;
-        var numElectrons = 10;
-        var maxElectrons = 10; // 
-        var maxElectronVelocity = 301; // temporary set to 300
-        var leftX;
-        var rigthX;
-        var topY;
-        var bottomY;
-        var circuitCenterX;
-        var circuitCenterY;
+        // Game Constants
+        var plateZoneLeft;          // Left limit for electrons x coordinate 
+        var plateZoneRight;         // Right limit for electrons x coordinate
+        var plateZoneTop;           // Top limit for electrons y coordinate
+        var plateZoneBottom;        // Bottom limit for electrons y coordinate
+        var circuitCenterX; // The centered coordinate of the circuit
+        var circuitCenterY; // The centered coordinate of the circuit
+        // Global Variables
+        var maxKinetic = 2;    // (eV) Extra energy given to electrons, based on wavelength and work function
+        var numElectrons = 10; // Increases with increasing intensity and limited by frequency
+        var maxElectrons = 10; // Increases with increasing intensity and limited by frequency
+        var maxElectronVelocity = 301; // Increases as maxKinetic increases (velocity should be random and change by steps)
+        // Sprites
+        var electrons; // the group of all electrons
+        var photons;   // the group of all photons
+        var battery0;  // the battery sprite
+        var circuit0;  // the circuit sprite
+        var electronBeam0;
+        
         function create () {
+            // Build game window
             game.physics.startSystem(Phaser.Physics.ARCADE);
             game.stage.backgroundColor = '#2d2d2d';
 
+            // Set some game constants
             circuitCenterX = game.world.centerX;
             circuitCenterY = game.world.centerY+45;
 
+            // Make the sprite groups and the individual sprites
             electrons = game.add.physicsGroup();
             photons = game.add.physicsGroup();
-            leftX = circuitCenterX-30*22/2+30*2; // (x center) - (half of circuit width) + (little less than width of left circuit plate)
-            rightX = circuitCenterX+30*22/2-30*3;// (x center) + (half of circuit width) - (width of right circuit plate)
-            topY = circuitCenterY-30*15/2;       // (y center) - (half of circuit height)
-            bottomY = circuitCenterY-30*15/2+30*9-6*3; // (y center) - (half of circuit height) + (height of circuit plate) - (height of electron)
-
-
-            circuit0  = game.add.sprite(circuitCenterX-30*22/2, circuitCenterY-30*15/2, 'circuit');
-            // photon0 = game.add.sprite(circuitCenterX+30*16/2-90, circuitCenterY-30*15/2+30*9-6*3, 'photon0');
+            
+            circuit0  = game.add.sprite(circuitCenterX-(30*22)/2, circuitCenterY-(30*15)/2, 'circuit');
             battery0  = game.add.sprite(circuitCenterX-30*5, circuitCenterY+3*30+15,'battery0');
             
+            // Set some sprite constants
+            plateZoneLeft = circuitCenterX-(30*22)/2+30*2; // (x center) - (circuit width)/2 + (width of left circuit plate -30)
+            plateZoneRight = circuitCenterX+(30*22)/2-30*3;// (x center) + (circuit width)/2 - (width of right circuit plate)
+            plateZoneTop = circuitCenterY-(30*15)/2;       // (y center) - (circuit height)/2
+            plateZoneBottom = circuitCenterY-(30*15)/2+30*9-6*3; // (y center) - (circuit height)/2 + (height of circuit plate) - (height of electron)
             
+            // Make some random electrons
+            // for(var i = 0; i<numElectrons; i++){ // replace with "current" factor eventually
+            //     var xpos = plateZoneLeft;
+            //     var ypos = game.rnd.between(plateZoneBottom,plateZoneTop);
+            //     var electronParticle = electrons.create(xpos,ypos,'electron0');
+            //     var velocity = game.rnd.between( (maxElectronVelocity>100) ? (maxElectronVelocity-100) : 0,maxElectronVelocity);
+            //     velocity = 400;
+            //     electronParticle.body.velocity.x = velocity;
+            // }
             
-            for(var i = 0; i<numElectrons; i++){ // replace with "current" factor eventually
-                var xpos = leftX;
-                var ypos = game.rnd.between(bottomY,topY);
-                var electronParticle = electrons.create(xpos,ypos,'electron0');
-                var velocity = game.rnd.between( (maxElectronVelocity>100) ? (maxElectronVelocity-100) : 0,maxElectronVelocity);
-                velocity = 400;
-                electronParticle.body.velocity.x = velocity;
-            }
-            
-            // game.physics.arcade.enable(photon0);
+            // Apply physics to individual sprites
             game.physics.arcade.enable(circuit0);
-            // photon0.animations.add('change',[0,1],10,false);
-            //  Our controls.
+            
+            //  Our controls
             cursors = game.input.keyboard.createCursorKeys();
-            // photon0.body.velocity.y = 0;
+            
         }
         var counter = 0;
         function update () {
-            maxKinetic = 4.14*300/wavelength.value-workFunction.value;
-            maxElectronVelocity = 500+50*maxKinetic;
 
-            // function createRandomSpritesFromGroup(spriteGroup, textureName, probability, maxLimit, x1, y1, x2, y2, functionToCall);
-            createRandomSpritesFromGroup(photons, 'photon0', intensity.value/6, intensity.value/4, leftX, bottomY,leftX,topY,function(photonParticle){
-                photonParticle.body.velocity.x = 300;
-                photonParticle.tint = tintFromWavelength(wavelength.value);
-            });
-            // game.physics.arcade.overlap(circuit, photons, collisionHandler, null, this);
+            // Set global variables
+            maxKinetic = 4.14*300/wavelength.value-workFunction.value; // h*c/(lambda)-W
+            if(maxKinetic>0){
+                maxElectronVelocity = 500*Math.sqrt(maxKinetic); // TODO: make a better velocity equation
+            } else {
+                maxElectronVelocity = -10;
+            }
+            
+
+            // Make random photons come out of the left plate
+            // createRandomSpritesFromGroup(photons, 'photon0', intensity.value/6, intensity.value/4, plateZoneRight, plateZoneBottom,plateZoneRight,plateZoneTop,function(photonParticle){
+            //     photonParticle.body.velocity.x = -300;
+            //     photonParticle.tint = tintFromWavelength(wavelength.value);
+            // });
+
+            // Make random photons come out of a beam
+            var beamTop = new Phaser.Point(circuitCenterX,0);
+            var beamBottom = new Phaser.Point(circuitCenterX+60,90);
+            var plateTop = new Phaser.Point(plateZoneLeft,plateZoneTop);
+            var plateBottom = new Phaser.Point(plateZoneLeft,plateZoneBottom);
+            var randomPlacementVal = game.rnd.between(0,100);
+
+            var beamStartX = (beamTop.x-beamBottom.x)/(0-100)*(randomPlacementVal)+beamTop.x;
+            var beamStartY = (beamTop.y-beamBottom.y)/(0-100)*(randomPlacementVal)+beamTop.y;
+            var beamEndX = (plateTop.x-plateBottom.x)/(0-100)*(randomPlacementVal)+plateTop.x;
+            var beamEndY = (plateTop.y-plateBottom.y)/(0-100)*(randomPlacementVal)+plateTop.y;
+
+            var beamEndPoint = new Phaser.Point(beamEndX,beamEndY);
+            var beamStartPoint = new Phaser.Point(beamStartX,beamStartY);
+            var beamAngle = beamStartPoint.angle(beamEndPoint,false);
+
+            createRandomSpritesFromGroup(photons, 'photon0', intensity.value/6, intensity.value/4, beamStartPoint.x, beamStartPoint.y, beamStartPoint.x, beamStartPoint.y,function(photonParticle){
+                // photonParticle.body.rotation = -90;
+                photonParticle.body.velocity.x = 300*Math.cos(beamAngle);
+                photonParticle.body.velocity.y = 300*Math.sin(beamAngle);
+                
+            });            
+            // //TEMPORARY
+
+            // var acceleration = (-maxElectronVelocity*maxElectronVelocity/(2*16*30));
+            // var maxKinetic = (maxKinetic);
+            // console.log(acceleration/maxKinetic);
+
+            // //TEMPORARY
             electrons.forEach(function(electronParticle){
-                if(electronParticle.body.x>rightX || electronParticle.body.x<leftX-1){
-                    electronParticle.body.x = leftX;
-                    electronParticle.body.y = game.rnd.between(bottomY,topY);
-                    var velocity = game.rnd.between( (maxElectronVelocity>100) ? (maxElectronVelocity-100) : 0,maxElectronVelocity);
-                    velocity = maxElectronVelocity;
-                    electronParticle.body.velocity.x = velocity;
+                if(electronParticle.body.x>plateZoneRight || electronParticle.body.x<plateZoneLeft-1){
+                    electrons.removeChild(electronParticle);
+                    
+                    // Reset electron
+                    // electronParticle.body.x = plateZoneLeft;
+                    // electronParticle.body.y = game.rnd.between(plateZoneBottom,plateZoneTop);
+                    // var velocity = game.rnd.between( (maxElectronVelocity>100) ? (maxElectronVelocity-100) : 0,maxElectronVelocity);
+                    // velocity = maxElectronVelocity;
+                    // electronParticle.body.velocity.x = velocity;
                 }
-                var acceleration = -maxElectronVelocity*maxElectronVelocity/(2*17*30); // Not really based on formulas but it is fine tuned
-                electronParticle.body.acceleration = new Phaser.Point(-acceleration*voltage.value/maxKinetic,0);
+                
+                var acceleration = -maxElectronVelocity*maxElectronVelocity/(2*16*30); // Not really based on formulas but it is fine tuned
+                // console.log(acceleration);
+                // electronParticle.body.acceleration = new Phaser.Point(-acceleration*voltage.value/maxKinetic,0);
+                electronParticle.body.acceleration = new Phaser.Point(260*voltage.value,0);
                 // electronParticle.body.acceleration = new Phaser.Point(acceleration,0);
                 // console.log(voltage.value/maxKinetic);
             }, this);
             photons.forEach(function(photonParticle){
-                if(photonParticle.body.x>rightX){
-                    photons.removeChild(photonParticle);
+                if(photonParticle.body.x<plateZoneLeft){
+                    
+                    game.physics.arcade.overlap(circuit0, photonParticle, photonCollisionHandler, null, this);
                 }
+                photonParticle.tint = tintFromWavelength(wavelength.value);
+                
             });
             
             
         }
+        function makeElectron(x,y){
+            var electronParticle = electrons.create(x,y,'electron0');
+            var velocity = game.rnd.between( maxElectronVelocity/3, maxElectronVelocity );
+            velocity = maxElectronVelocity;
+            electronParticle.body.velocity.x = velocity;
+        }
+        function photonCollisionHandler(circuitSprite, photonParticle){
+            makeElectron(plateZoneLeft,photonParticle.body.y);
+            photons.removeChild(photonParticle);
+            
+        }
+        function createRandomSpritesFromGroup(spriteGroup, textureName, probability, spriteLimit, x1, y1, x2, y2, functionToCall){
+            // game.rnd.between(min,max);
+            var chance = game.rnd.between(0,100);
+            var spriteCount = 0;
+            spriteGroup.forEach(function(e){spriteCount++});
+            if(chance<probability && spriteCount<=spriteLimit){
+                var xpos = game.rnd.between(x1,x2);
+                var ypos = game.rnd.between(y1,y2);
+                var newSprite = spriteGroup.create(xpos,ypos,textureName);
+                functionToCall(newSprite);
+            }    
+        }
+
         function tintFromWavelength(givenWavelength){
             var r = 0;
             var g = 0;
@@ -284,11 +364,13 @@
                 return "0xff0000";
             } else if(givenWavelength<760) {
                 return "0xaf0800";
-            } 
-            var red = hexFromDoubleDec(r);  
-            var green = hexFromDoubleDec(g);
-            var blue = hexFromDoubleDec(b);
-            return "0x"+red+green+blue;
+            } else {
+                return "0x000000";
+            }
+            // var red = hexFromDoubleDec(r);  
+            // var green = hexFromDoubleDec(g);
+            // var blue = hexFromDoubleDec(b);
+            // return "0x"+red+green+blue;
         }
         function hexFromDoubleDec(decimalVal){
             if(decimalVal>255)
@@ -330,21 +412,6 @@
                     return "F";
                 
             }
-        }
-        function collisionHandler(firstSprite, spriteGroup){
-            
-        }
-        function createRandomSpritesFromGroup(spriteGroup, textureName, probability, spriteLimit, x1, y1, x2, y2, functionToCall){
-            // game.rnd.between(min,max);
-            var chance = game.rnd.between(0,100);
-            var spriteCount = 0;
-            spriteGroup.forEach(function(e){spriteCount++});
-            if(chance<probability && spriteCount<=spriteLimit){
-                var xpos = game.rnd.between(x1,x2);
-                var ypos = game.rnd.between(y1,y2);
-                var newSprite = spriteGroup.create(xpos,ypos,textureName);
-                functionToCall(newSprite);
-            }    
         }
 
     };
