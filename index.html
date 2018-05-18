@@ -5,20 +5,31 @@
         <title>Photoelectric Effect by Ryan Au</title>
         <script src="//cdn.jsdelivr.net/phaser/2.5.0/phaser.min.js"></script>
     </head>
+    <!--<button>Debug On</button>-->
 
+    <p>Only electrons with highest velocity possible <input type="checkbox" id="checkHighVelocity" value="active"></input></p>
+    
     <div>
         <p>Wavelength: <input type="text" id="outWave" maxlength="3" size="3" max="850" min="100" >nm</p>
-        <input type="range" min="100" max="850" value="400" step="2" id="sliderWave" style="width:300px">
+        <input type="range" min="100" max="850" value="400" step="2" id="sliderWave" style="width:700px">
+        <br/>
+        <img src="images/light_spectrum.jpg" style="margin-left:180px;width:450px">
         
     </div>
     <div>
-        <p>Potential Difference: <input type="text" id="outVolt" maxlength="4" size="4">V</p>
+        <p>Potential Difference: <input type="text" id="outVolt" maxlength="8" size="6">V</p>
         <input size="15" type="range" min="-8.00" max="8.00" step="0.01" value="0" id="sliderVolt" list="tickmarks" style="width:1000px">
         <datalist id="tickmarks">
             <option value="0">
         </datalist>
     </div>
-
+    
+    <div style="display:none;">
+        <p>Acceleration Constant: <input type="text" id="outAcc" maxlength="4" size="4">V</p>
+        <input size="20" type="range" min="400" max="1200" step="0.01" value="960" id="sliderAcc" style="width:1000px">
+        
+    </div>
+    
     <div>
         <p>Intensity: <input type="text" id="outIntense" maxlength="4" size="4">%</p>
         <input size="10" type="range" min="0" max="100" step="1" value="10" id="sliderIntense"style="width:300px">
@@ -42,6 +53,8 @@
     <body>
     <!--<script src=sprites.js></script>-->
     <script type="text/javascript">
+        
+
 //  DOM controls
     var sliderIntense = document.getElementById("sliderIntense");
     var outIntense = document.getElementById("outIntense");
@@ -50,6 +63,15 @@
     }
     outIntense.oninput = function(){
         sliderIntense.value = this.value;
+    }
+
+    var sliderAcc = document.getElementById("sliderAcc");
+    var outAcc = document.getElementById("outAcc");
+    sliderAcc.oninput = function() {
+        outAcc.value = this.value;
+    }
+    outAcc.oninput = function(){
+        sliderAcc.value = this.value;
     }
 
     var sliderVolt = document.getElementById("sliderVolt");
@@ -70,14 +92,18 @@
         sliderWave.value = this.value;
     }
 // Phaser Controls
+    var DEBUG;
     window.onload = function() {
+        DEBUG = true;
         outWave.value = sliderWave.value;
         outVolt.value = sliderVolt.value;
         outIntense.value = sliderIntense.value;
+        outAcc.value = sliderAcc.value;
 
         var wavelength = sliderWave;
         var voltage    = sliderVolt;
         var intensity  = sliderIntense;
+        
         var workFunction = document.getElementById("material");
 
         //  Note that this html file is set to pull down Phaser 2.5.0 from the JS Delivr CDN.
@@ -159,6 +185,7 @@
         var numElectrons = 10; // Increases with increasing intensity and limited by frequency
         var maxElectrons = 10; // Increases with increasing intensity and limited by frequency
         var maxElectronVelocity = 301; // Increases as maxKinetic increases (velocity should be random and change by steps)
+        var highestVelocityElectronsOnly; // Determines whether all electrons are highest velocity or mixed
         // Sprites
         var electrons; // the group of all electrons
         var photons;   // the group of all photons
@@ -209,7 +236,8 @@
         function update () {
 
             // Set global variables
-            maxKinetic = 4.14*300/wavelength.value-workFunction.value; // h*c/(lambda)-W
+            highestVelocityElectronsOnly = document.getElementById("checkHighVelocity").checked;
+            maxKinetic = 4.14375*300/wavelength.value-workFunction.value; // h*c/(lambda)-W
             if(maxKinetic>0){
                 maxElectronVelocity = 500*Math.sqrt(maxKinetic); // TODO: make a better velocity equation
             } else {
@@ -245,15 +273,16 @@
                 photonParticle.body.velocity.y = 300*Math.sin(beamAngle);
                 
             });            
-            // //TEMPORARY
+            //TEMPORARY
 
-            // var acceleration = (-maxElectronVelocity*maxElectronVelocity/(2*16*30));
+            // var acceleration = (-maxElectronVelocity*maxElectronVelocity/(960));
+            var acceleration = (-maxElectronVelocity*maxElectronVelocity/document.getElementById("sliderAcc").value);
             // var maxKinetic = (maxKinetic);
-            // console.log(acceleration/maxKinetic);
+            console.log("Scaling Constant "+Math.round(acceleration/maxKinetic*100)/100+" , Stopping Voltage: "+ Math.round(-maxKinetic*100)/100 );
 
             // //TEMPORARY
             electrons.forEach(function(electronParticle){
-                if(electronParticle.body.x>plateZoneRight || electronParticle.body.x<plateZoneLeft-1){
+                if(electronParticle.body.x>plateZoneRight-15 || electronParticle.body.x<plateZoneLeft-1){
                     electrons.removeChild(electronParticle);
                     
                     // Reset electron
@@ -263,13 +292,30 @@
                     // velocity = maxElectronVelocity;
                     // electronParticle.body.velocity.x = velocity;
                 }
+                var DEBUG = false;
+                if(DEBUG){
+                    var acceleration = (-maxElectronVelocity*maxElectronVelocity/document.getElementById("sliderAcc").value);
+                    // var acceleration = -maxElectronVelocity*maxElectronVelocity/(1008.7); // Not really based on formulas but it is fine tuned
+                    electronParticle.body.acceleration = new Phaser.Point(acceleration,0); // no math applied. Debugging purpose only
+                } else {
+                    // Different variables
+                    // electronParticle.body.acceleration = new Phaser.Point((acceleration/maxKinetic)*voltage.value,0);
+                    // electronParticle.body.acceleration = new Phaser.Point(259.84824862280425*voltage.value,0); 
+                    // electronParticle.body.acceleration = new Phaser.Point(252.37739506147915*voltage.value,0);
+                    electronParticle.body.acceleration = new Phaser.Point(260.4166666666667 *voltage.value,0);
+                }
+
+                // console.log(acceleration); // Reading accceleration values
+                // electronParticle.body.acceleration = new Phaser.Point(-acceleration*voltage.value/maxKinetic,0); // Old version
                 
-                var acceleration = -maxElectronVelocity*maxElectronVelocity/(2*16*30); // Not really based on formulas but it is fine tuned
-                // console.log(acceleration);
-                // electronParticle.body.acceleration = new Phaser.Point(-acceleration*voltage.value/maxKinetic,0);
-                electronParticle.body.acceleration = new Phaser.Point(260*voltage.value,0);
-                // electronParticle.body.acceleration = new Phaser.Point(acceleration,0);
-                // console.log(voltage.value/maxKinetic);
+
+
+                // electronParticle.body.acceleration = new Phaser.Point(259.84824862280425*voltage.value,0); 
+                // electronParticle.body.acceleration = new Phaser.Point(252.37739506147915*voltage.value,0); //           
+                
+                
+
+                
             }, this);
             photons.forEach(function(photonParticle){
                 if(photonParticle.body.x<plateZoneLeft){
@@ -284,8 +330,18 @@
         }
         function makeElectron(x,y){
             var electronParticle = electrons.create(x,y,'electron0');
-            var velocity = game.rnd.between( maxElectronVelocity/3, maxElectronVelocity );
-            velocity = maxElectronVelocity;
+            var probability = game.rnd.between(0,100);
+            var velocity = maxElectronVelocity;
+            // console.log(highestVelocityElectronsOnly); // DEBUG
+            if(!highestVelocityElectronsOnly){
+                if(probability<20){
+                    velocity = maxElectronVelocity/4*1;
+                } else if(probability<40){
+                    velocity = maxElectronVelocity/4*2;
+                } else if(probability<60){
+                    velocity = maxElectronVelocity/4*3;
+                }
+            }
             electronParticle.body.velocity.x = velocity;
         }
         function photonCollisionHandler(circuitSprite, photonParticle){
@@ -337,33 +393,33 @@
                 // }
             // Second Try
             if(givenWavelength<380) {
-                return "0x000000";
-            } else if(givenWavelength<390) {
-                return "0x8c20bf";
-            } else if(givenWavelength<420) {
-                return "0x8300ff";
+                return "0x000000"; // Black
             } else if(givenWavelength<450) {
-                return "0x2e00ff";
-            } else if(givenWavelength<462) {
-                return "0x00e1ff";
-            } else if(givenWavelength<491) {
-                return "0x00ffe1";
+                return "0x8c20bf"; // Violet
+            } else if(givenWavelength<490) {
+                return "0x8300ff"; // Indigo
+            } else if(givenWavelength<508) {
+                return "0x2e00ff"; // Dark Blue
             } else if(givenWavelength<520) {
-                return "0x00ff3f";
-            } else if(givenWavelength<550) {
-                return "0x00ff04";
+                return "0x00e1ff"; // Light Blue
+            } else if(givenWavelength<530) {
+                return "0x00ffe1"; // Greener Light Blue
+            } else if(givenWavelength<558) {
+                return "0x00ff3f"; // Grassy Green
             } else if(givenWavelength<580) {
-                return "0xe5ff00";
-            } else if(givenWavelength<612) {
-                return "0xffbf00";
+                return "0x00ff04"; // Bright Yellow Green
+            } else if(givenWavelength<596) {
+                return "0xe5ff00"; // Yellow
+            } else if(givenWavelength<614) {
+                return "0xffbf00"; // Yellowy Orange
             } else if(givenWavelength<630) {
-                return "0xff8300";
-            } else if(givenWavelength<650) {
-                return "0xff4c00";
-            } else if(givenWavelength<710) {
-                return "0xff0000";
-            } else if(givenWavelength<760) {
-                return "0xaf0800";
+                return "0xff8300"; // Orange
+            } else if(givenWavelength<654) {
+                return "0xff4c00"; // Darker Orange
+            } else if(givenWavelength<670) {
+                return "0xff0000"; // Red Orange
+            } else if(givenWavelength<692) {
+                return "0xaf0800"; // Super Dark Red
             } else {
                 return "0x000000";
             }
@@ -384,7 +440,7 @@
         }
         function hexFromSingleDec(singleDec){
             singleDec = Math.trunc(singleDec);
-            console.log(singleDec);
+            // console.log(singleDec);
             switch(singleDec){
                 case 0:
                 case 1:
