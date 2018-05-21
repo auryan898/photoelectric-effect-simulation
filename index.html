@@ -4,25 +4,76 @@
         <meta charset="UTF-8" />
         <title>Photoelectric Effect by Ryan Au</title>
         <script src="//cdn.jsdelivr.net/phaser/2.5.0/phaser.min.js"></script>
+        <!--<script src="vis/vis.min.js"></script>-->
+        <!-- <link rel="stylesheet" type="text/css" href="vis/vis.min.css">-->
+        <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
     </head>
     <!--<button>Debug On</button>-->
 
-    <p>Only electrons with highest velocity possible <input type="checkbox" id="checkHighVelocity" value="active"></input></p>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            text-align: center;
+            font-size:24px;
+            font-weight: 600;
+        }
+        input {
+            font-size:24px;
+            font-weight: 600;
+        }
+        select {
+            font-size:24px;
+            font-weight: 600;
+        }
+        canvas {
+            margin-left: auto;
+            margin-right: auto;
+        }
+        .sidebar {
+            display:inline-block;
+        }
+
+    </style>
+
+    <h1>Photoelectric Effect Simulations</h1>
+    
+    <div id="container" class="sidebar" style="display:inline-block;"></div>
+    
+    <div id="sidebar" class="sidebar">
+        <p class="sidebar">Only electrons with highest velocity possible <input type="checkbox" id="checkHighVelocity" value="active"></input></p>
+        <div>
+            <p>Select Material:</p>
+            <select id="material">
+                <option value="4.7" selected="true">Copper</option>
+                <option value="2.28">Sodium</option>
+                <option value="4.3">Zinc</option>
+                <option value="6.35">Platinum</option>
+                <option value="2.9">Calcium</option>
+                <option value="4.08">Aluminum</option>
+                <option value="4.81">Carbon</option>
+                <option value="2.3">Potassium</option>
+                <option value="5.1">Gold</option>
+            </select>
+        </div>
+        <div class="sidebar">
+            <p>Potential Difference: <input type="text" id="outVolt" maxlength="8" size="6">V</p>
+            <input size="15" type="range" min="-8.00" max="8.00" step="0.01" value="0" id="sliderVolt" list="tickmarks" style="width:600px">
+            <datalist id="tickmarks">
+                <option value="0">
+            </datalist>
+        </div>
+        
+    </div>
+    
     
     <div>
         <p>Wavelength: <input type="text" id="outWave" maxlength="3" size="3" max="850" min="100" >nm</p>
         <input type="range" min="100" max="850" value="400" step="2" id="sliderWave" style="width:700px">
         <br/>
-        <img src="images/light_spectrum.jpg" style="margin-left:180px;width:450px">
+        <img src="images/light_spectrum.jpg" style="margin-left:120px;width:450px">
         
     </div>
-    <div>
-        <p>Potential Difference: <input type="text" id="outVolt" maxlength="8" size="6">V</p>
-        <input size="15" type="range" min="-8.00" max="8.00" step="0.01" value="0" id="sliderVolt" list="tickmarks" style="width:1000px">
-        <datalist id="tickmarks">
-            <option value="0">
-        </datalist>
-    </div>
+    
     
     <div style="display:none;">
         <p>Acceleration Constant: <input type="text" id="outAcc" maxlength="4" size="4">V</p>
@@ -35,19 +86,11 @@
         <input size="10" type="range" min="0" max="100" step="1" value="10" id="sliderIntense"style="width:300px">
     </div>
 
+    
+
     <div>
-        <p>Select Material:</p>
-        <select id="material">
-            <option value="4.7" selected="true">Copper</option>
-            <option value="2.28">Sodium</option>
-            <option value="4.3">Zinc</option>
-            <option value="6.35">Platinum</option>
-            <option value="2.9">Calcium</option>
-            <option value="4.08">Aluminum</option>
-            <option value="4.81">Carbon</option>
-            <option value="2.3">Potassium</option>
-            <option value="5.1">Gold</option>
-        </select>
+        <p>Temperature: <input type="text" id="outTemperature" maxlength="10" size="4">K</p>
+        <input size="10" type="range" min="0" max="10000" step="10" value="3000" id="sliderTemperature"style="width:300px">
     </div>
 
     <body>
@@ -91,26 +134,36 @@
     outWave.oninput = function(){
         sliderWave.value = this.value;
     }
+    var sliderTemperature = document.getElementById("sliderTemperature");
+    var outTemperature = document.getElementById("outTemperature");
+    sliderTemperature.oninput = function() {
+        outTemperature.value = this.value;
+    }
+    outTemperature.oninput = function(){
+        sliderTemperature.value = this.value;
+    }
 // Phaser Controls
     var DEBUG;
-    window.onload = function() {
+    var temperature;
+    //window.onload = function() {
         DEBUG = true;
         outWave.value = sliderWave.value;
         outVolt.value = sliderVolt.value;
         outIntense.value = sliderIntense.value;
         outAcc.value = sliderAcc.value;
+        outTemperature.value = sliderTemperature.value;
 
         var wavelength = sliderWave;
         var voltage    = sliderVolt;
         var intensity  = sliderIntense;
-        
+        temperature = sliderTemperature;
         var workFunction = document.getElementById("material");
 
         //  Note that this html file is set to pull down Phaser 2.5.0 from the JS Delivr CDN.
         //  Although it will work fine with this tutorial, it's almost certainly not the most current version.
         //  Be sure to replace it with an updated version before you start experimenting with adding your own code.
 
-        var game = new Phaser.Game(1000, 600, Phaser.AUTO, '', { preload: preload, create: create, update: update });
+        var game = new Phaser.Game(1000, 600, Phaser.AUTO, 'container', { preload: preload, create: create, update: update });
         var cursors;
         function preload () {
             //loadTextures(); // battery, electron
@@ -238,6 +291,8 @@
             // Set global variables
             highestVelocityElectronsOnly = document.getElementById("checkHighVelocity").checked;
             maxKinetic = 4.14375*300/wavelength.value-workFunction.value; // h*c/(lambda)-W
+            if(wavelength.value<725){maxKinetic-= (wavelength.value-725)/100.0 }
+
             if(maxKinetic>0){
                 maxElectronVelocity = 500*Math.sqrt(maxKinetic); // TODO: make a better velocity equation
             } else {
@@ -469,12 +524,52 @@
                 
             }
         }
-
-    };
+        
+    //};
 
     </script>
 
 
+<!--Plotly visualization for the planck law graph-->
+    <div id="myDiv"><!-- Plotly chart will be drawn inside this DIV --></div>
+    <script>
+        function repeatGraphMake(){
+            var trace1 = {
+                x: [1, 2, 3, 4], 
+                y: [10, 15, 13, 17], 
+                type: 'scatter'
+            };
+
+            for(var i = 0; i<50; i++){
+            var wave = i*50;
+            var d = 1.19268*Math.pow(10,17);
+            var e = Math.pow(1.01450859,1/temperature.value);
+            var energy = d/Math.pow(wave,5)/(Math.pow(e,1/(wave*.000000001))-1);
+            if(isNaN(energy)){energy=0;}
+                trace1.x[i]=wave;
+                trace1.y[i]=energy;
+            }
+            var layout = {
+                title: 'Wavelength (nm) vs Spectral Radiance',
+                xaxis: {
+                    title: 'Wavelength (m x 10^-9)'
+                },
+                yaxis: {
+                    title: 'Spectral Radiance'
+                }
+            }
+            // console.log(trace1);
+            var data = [trace1];
+            Plotly.newPlot('myDiv', data, layout);
+        }
+        // repeatGraphMake();
+        window.onload = function(){
+            setInterval(repeatGraphMake,500);
+        }
+        
+        
+        
+    </script>
 
     </body>
 </html>
