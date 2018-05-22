@@ -34,9 +34,10 @@
         }
 
     </style>
-
-    <h1>Photoelectric Effect Simulations</h1>
-    
+    <div>
+        <h1>Photoelectric Effect Simulations</h1>
+        <a>Zoom out using ctrl and - to better see the simulation</a>
+    </div>
     <div id="container" class="sidebar" style="display:inline-block;"></div>
     
     <div id="sidebar" class="sidebar">
@@ -62,8 +63,14 @@
                 <option value="0">
             </datalist>
         </div>
+        <div>
+            <p>Intensity: <input type="text" id="outIntense" maxlength="4" size="4">%</p>
+            <input size="10" type="range" min="0" max="100" step="1" value="10" id="sliderIntense"style="width:300px">
+        </div>
         
     </div>
+
+    
     
     
     <div>
@@ -79,11 +86,6 @@
         <p>Acceleration Constant: <input type="text" id="outAcc" maxlength="4" size="4">V</p>
         <input size="20" type="range" min="400" max="1200" step="0.01" value="960" id="sliderAcc" style="width:1000px">
         
-    </div>
-    
-    <div>
-        <p>Intensity: <input type="text" id="outIntense" maxlength="4" size="4">%</p>
-        <input size="10" type="range" min="0" max="100" step="1" value="10" id="sliderIntense"style="width:300px">
     </div>
 
     
@@ -163,7 +165,7 @@
         //  Although it will work fine with this tutorial, it's almost certainly not the most current version.
         //  Be sure to replace it with an updated version before you start experimenting with adding your own code.
 
-        var game = new Phaser.Game(1000, 600, Phaser.AUTO, 'container', { preload: preload, create: create, update: update });
+        var game = new Phaser.Game(700, 600, Phaser.AUTO, 'container', { preload: preload, create: create, update: update });
         var cursors;
         function preload () {
             //loadTextures(); // battery, electron
