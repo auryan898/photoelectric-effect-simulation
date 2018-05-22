@@ -293,7 +293,7 @@
             // Set global variables
             highestVelocityElectronsOnly = document.getElementById("checkHighVelocity").checked;
             maxKinetic = 4.14375*300/wavelength.value-workFunction.value; // h*c/(lambda)-W
-            if(wavelength.value<725){maxKinetic-= (wavelength.value-725)/100.0 }
+            // if(wavelength.value<725){maxKinetic-= (wavelength.value-725)/100.0 }
 
             if(maxKinetic>0){
                 maxElectronVelocity = 500*Math.sqrt(maxKinetic); // TODO: make a better velocity equation
